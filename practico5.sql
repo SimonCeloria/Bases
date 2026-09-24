@@ -235,19 +235,159 @@ grant employee to empleado2;
 
 
 
+--- Parcial viejo 1
+
+USE northwind;
+
+# ej 1 Listar los 10 productos mas vendidos (por cantidad total)
+
+SELECT pr.ProductName AS producto, sum(od.Quantity) AS cantidad
+FROM `Order Details` AS od
+JOIN Products AS pr ON od.ProductID = pr.ProductID
+GROUP BY pr.ProductID, pr.ProductName
+ORDER BY cantidad DESC 
+LIMIT 10;
+ 
+
+# ej 2 Listar los empleados junto a la cantidad total de ordenes que gestionaron (ordenado)
+
+SELECT CONCAT(e.FirstName, ' ', e.LastName) AS empleado, COUNT(o.OrderID) AS ordenes_gestionadas
+FROM Employees AS e
+JOIN Orders AS o ON o.EmployeeID = e.EmployeeID
+GROUP BY e.EmployeeID, e.FirstName, e.LastName
+ORDER BY ordenes_gestionadas DESC
 
 
+# ej 3 Monto total facturado por cada cliente
+
+SELECT c.ContactName AS comprador, ROUND(SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)), 2) AS cantidad_gastado
+FROM `Order Details` AS od
+JOIN Orders AS o ON od.OrderID = o.OrderID
+JOIN Customers AS c ON o.CustomerID = c.CustomerID
+GROUP BY c.ContactName, c.CustomerID
+ORDER BY cantidad_gastado DESC
+
+# ej 4 Crear un trigger que registre automáticamente el país en Orders (ShipCountry) según el cliente,
+# en otras palabras, cuando se crea una orden, copiar el país del cliente antes de de insertar la orden.
+
+DROP TRIGGER IF EXISTS copy_country
+
+DELIMITER //
+
+CREATE TRIGGER copy_country
+BEFORE INSERT
+ON Orders
+FOR EACH ROW
+BEGIN
+		DECLARE client_country VARCHAR(15);
+
+		SELECT Country INTO client_country
+	    FROM Customers
+	    WHERE CustomerID = NEW.CustomerID;
+	    
+	    SET NEW.ShipCountry = client_country;
+END //
+
+DELIMITER ;
 
 
+--- Parcial viejo 2
+
+# ej 1 Listar los 5 clientes con mas ingresos
+
+WITH IngresosClientes AS (
+	SELECT 
+		o.CustomerID,
+		SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) AS total_gastado
+	FROM `Order Details` AS od
+	JOIN Orders AS o ON od.OrderID = o.OrderID
+	GROUP BY o.CustomerID
+)
+SELECT c.ContactName AS nombre, fc.total_gastado AS gastado
+FROM IngresosClientes AS fc
+JOIN Customers AS c ON c.CustomerID = fc.CustomerID 
+GROUP BY c.ContactName, c.CustomerID
+ORDER BY gastado DESC
+
+# ej 2 Listar cada producto con sus ventas totales, agrupados por categoria
+
+WITH ventas_totales AS (
+	SELECT 
+		p.ProductID,
+        p.ProductName,
+        p.CategoryID,
+		ROUND(SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)), 2) AS total_vendido
+	FROM `Order Details` AS od
+	JOIN Products AS p ON p.ProductID = od.ProductID
+	GROUP BY p.CategoryID, p.ProductID, p.ProductName
+)
+SELECT 
+	vt.ProductName AS producto, 
+	c.CategoryName AS categoria, 
+	vt.total_vendido AS ventas
+FROM ventas_totales  AS vt
+JOIN Categories AS c ON c.CategoryID = vt.CategoryID 
+ORDER BY c.CategoryName, ventas
+
+# ej 4 vista con empleados con mas ventas por año, mostrando empleado, año y total de ventas. Ordenar el resultdao asc
+CREATE VIEW ventasTotalesView AS
+WITH ventas_totales AS (
+	SELECT 
+		o.EmployeeID,
+		YEAR(o.OrderDate) AS anio,
+		ROUND(SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)), 2) AS total_vendido
+	FROM `Order Details` AS od
+	JOIN Orders AS o ON o.OrderID = od.OrderID
+	GROUP BY o.EmployeeID, YEAR(o.OrderDate)
+)
+SELECT 
+	e.FirstName,
+	e.LastName,
+	vt.anio,
+	vt.total_vendido
+FROM ventas_totales AS vt 
+JOIN Employees AS e ON e.EmployeeID = vt.EmployeeID 
+ORDER BY anio, vt.total_vendido ASC
 
 
+SELECT 
+    v.FirstName,
+    v.LastName,
+    v.anio,
+    v.total_vendido
+FROM ventasTotalesView v
+WHERE v.total_vendido = (
+    SELECT MAX(v2.total_vendido)
+    FROM ventasTotalesView v2
+    WHERE v2.anio = v.anio
+)
+ORDER BY v.anio ASC;
+
+# Solucion sin with
+
+CREATE VIEW employeeOfTheYear AS 
+
+WITH ventasOrdenadas AS (
+    SELECT e.EmployeeID, YEAR(o.OrderDate) AS anio, 
+        SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS total_de_ventas
+    FROM employees AS e
+    INNER JOIN orders AS o ON o.EmployeeID = e.EmployeeID
+    INNER JOIN order_detail AS od ON od.OrderID = o.OrderID
+    GROUP BY e.EmployeeID, anio
+    ORDER BY anio, total_de_ventas ASC;
+) 
 
 
+SELECT Empleado, anio, total_de_ventas
+FROM VentasOrdenadas v
+WHERE total_de_ventas = (
+    SELECT MAX(total_de_ventas)
+    FROM VentasOrdenadas
+    WHERE anio = v.anio
+    )
+ORDER BY anio;
 
-
-
-
-
-
-
+# ej 5 Crear un trigger que se ejecute después de insertar un nuevo registro en la tabla Order Details.
+# Este trigger debe actualizar la tabla Products para disminuir la cantidad en stock (UnitsInStock) del producto correspondiente,
+# restando la cantidad (Quantity) que se acaba de insertar en el detalle del pedido.
 
