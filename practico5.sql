@@ -456,3 +456,26 @@ WHERE OrderID = 10248 AND ProductID = 1;
 UPDATE Products 
 SET UnitsInStock = UnitsInStock + 5 
 WHERE ProductID = 1;
+
+# Ej triggers parcial recuperatorio 2024 notificar si se recibio una reseña negativa
+
+DELIMITER //
+
+CREATE TRIGGER notify_host_after_bad_review
+AFTER INSERT ON reviews
+FOR EACH ROW
+BEGIN
+    IF NEW.rating <= 2 THEN
+        INSERT INTO messages
+             (sender_id, receiver_id, property_id, content, sent_at)
+        SELECT NEW.user_id,
+               p.owner_id,
+               NEW.property_id,
+               'Has recibido una reseña negativa en tu propiedad.',
+               NOW()
+        FROM properties AS p
+        WHERE p.id = NEW.property_id;
+    END IF;
+END //
+
+DELIMITER ;
