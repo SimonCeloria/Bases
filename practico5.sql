@@ -288,6 +288,38 @@ BEGIN
 	    SET NEW.ShipCountry = client_country;
 END //
 
+# Ej de tomas achaval de triggers
+
+DELIMITER //
+CREATE TRIGGER notify_host_after_booking
+AFTER INSERT ON bookings
+FOR EACH ROW
+BEGIN
+	INSERT INTO messages
+         (sender_id, receiver_id, property_id, content, sent_at)
+    SELECT NEW.user_id,
+            p.owner_id,
+            NEW.property_id,
+            'Este usuario ha creado una reserva en tu propiedad!',
+            NOW()
+	FROM properties AS p
+    WHERE p.id = NEW.property_id;
+END //
+DELIMITER ;
+
+### DIF CLAVE: Trigger 1 (notify_host_after_booking)
+
+Acción: Crea un nuevo registro en otra tabla (INSERT INTO messages).
+
+Cuándo se usa: Cuando la acción genera un efecto secundario fuera de la tabla original (ej. enviar una notificación, guardar en un historial/auditoría).
+
+Trigger 2 (copy_country)
+
+Acción: Modifica un dato de la misma fila antes de guardarla (SET NEW.ShipCountry = ...).
+
+Cuándo se usa: Cuando quieres autocompletar o transformar datos de la propia tupla que se está insertando (ej. llenar un campo que viene en NULL
+usando información de otra tabla).
+	
 DELIMITER ;
 
 
@@ -390,4 +422,37 @@ ORDER BY anio;
 # ej 5 Crear un trigger que se ejecute después de insertar un nuevo registro en la tabla Order Details.
 # Este trigger debe actualizar la tabla Products para disminuir la cantidad en stock (UnitsInStock) del producto correspondiente,
 # restando la cantidad (Quantity) que se acaba de insertar en el detalle del pedido.
+# En este ej no puedo usar la subconsulta
+# Regla de MySQL (Error 1093): No puedes usar un SELECT sobre la misma tabla que estás intentando modificar mediante un UPDATE o DELETE
+# en la misma instrucción. Si la tabla que lees y la que modificas son distintas, funciona sin problemas.
+# DROP TRIGGER IF EXISTS update_stock;
 
+DELIMITER //
+
+CREATE TRIGGER update_stock
+AFTER INSERT ON `Order Details`
+FOR EACH ROW
+BEGIN 
+    UPDATE Products
+    SET UnitsInStock = UnitsInStock - NEW.Quantity
+    WHERE ProductID = NEW.ProductID;
+END //
+
+DELIMITER ;
+
+SELECT ProductID, ProductName, UnitsInStock 
+FROM Products 
+WHERE ProductID = 1;
+
+SELECT MAX(OrderID) FROM Orders;
+
+INSERT INTO `Order Details` (OrderID, ProductID, UnitPrice, Quantity, Discount)
+VALUES (10248, 1, 18.00, 5, 0);
+
+DELETE FROM `Order Details` 
+WHERE OrderID = 10248 AND ProductID = 1;
+
+-- Devuelves las 5 unidades manualmente
+UPDATE Products 
+SET UnitsInStock = UnitsInStock + 5 
+WHERE ProductID = 1;
