@@ -235,9 +235,7 @@ grant employee to empleado2;
 
 
 
---- Parcial viejo 1
-
-USE northwind;
+--- Ejercicios extra
 
 # ej 1 Listar los 10 productos mas vendidos (por cantidad total)
 
@@ -322,8 +320,6 @@ usando información de otra tabla).
 	
 DELIMITER ;
 
-
---- Parcial viejo 2
 
 # ej 1 Listar los 5 clientes con mas ingresos
 
@@ -453,6 +449,7 @@ DELETE FROM `Order Details`
 WHERE OrderID = 10248 AND ProductID = 1;
 
 -- Devuelves las 5 unidades manualmente
+
 UPDATE Products 
 SET UnitsInStock = UnitsInStock + 5 
 WHERE ProductID = 1;
