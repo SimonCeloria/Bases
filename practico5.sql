@@ -181,7 +181,40 @@ CREATE TABLE city (
 -- cree un registro en la tabla `fines` por cada `rental` cuya devolución (return_date) haya 
 -- tardado más de 3 días (comparación con rental_date). El valor de la multa será el número de 
 -- días de retraso multiplicado por 1.5.
+# Explicacion procedimiento: Milanesa - Explicacion del procedimiento de arriba
+### Explicación del Procedimiento: `check_date_and_fine`
 
+Este procedimiento almacenado (*Stored Procedure*) sirve para **calcular e insertar multas automáticamente a todos los alquileres devueltos con retraso**.
+
+---
+
+#### Paso a paso del código 
+
+* **`CREATE PROCEDURE check_date_and_fine()`**  
+  Define el nombre del procedimiento ejecutable. No requiere parámetros de entrada.
+
+* **`INSERT INTO fines (rental_id, amount) SELECT ...`**  
+  Toma el resultado de la consulta `SELECT` e inserta masivamente las filas generadas dentro de la tabla `fines`.
+
+* **`DATEDIFF(r.return_date, r.rental_date)`**  
+  Función de SQL que resta dos fechas para obtener la **cantidad total de días** entre el alquiler (`rental_date`) y la devolución (`return_date`).
+
+* **`(DATEDIFF(...) - 3) * 1.5 AS amount`**  
+  Fórmula que calcula el valor monetario de la multa:
+  * **`- 3`**: Resta los 3 días que contempla el alquiler base (período sin multa).
+  * **`* 1.5`**: Aplica un cobro de $1.5$ por cada día de exceso.
+
+* **`WHERE r.return_date IS NOT NULL AND DATEDIFF(r.return_date, r.rental_date) > 3`**  
+  Filtra la tabla `rental` para considerar **únicamente** los alquileres que ya se devolvieron y que hayan superado el límite de 3 días.
+
+---
+
+#### Ejemplo práctico de ejecución
+
+| Días alquilado | Cumple condición (`> 3`) | Días excedidos | Cálculo del monto | Resultado |
+| :--- | :---: | :---: | :---: | :--- |
+| **2 días** | ❌ No | — | — | No genera registro en `fines`. |
+| **7 días** | ✅ Sí | $7 - 3 = 4$ días | $4 \times 1.5$ | Inserta multa de **$6.0$**. |
 drop procedure if exists check_date_and_fine;
 
 DELIMITER //
@@ -199,7 +232,7 @@ END //
 
 DELIMITER ;
 
-CALL check_date_and_fine();
+CALL check_date_and_fine(); # Para ejecutarlo
 
 SELECT DATEDIFF(r.return_date , r.rental_date) AS diferencia_dias
 FROM rental AS r
@@ -235,7 +268,7 @@ grant employee to empleado2;
 
 
 
---- Ejercicios extra
+--- Ejercicios extra - Milanesa
 
 # ej 1 Listar los 10 productos mas vendidos (por cantidad total)
 
@@ -268,7 +301,7 @@ ORDER BY cantidad_gastado DESC
 # ej 4 Crear un trigger que registre automáticamente el país en Orders (ShipCountry) según el cliente,
 # en otras palabras, cuando se crea una orden, copiar el país del cliente antes de de insertar la orden.
 
-DROP TRIGGER IF EXISTS copy_country
+DROP TRIGGER IF EXISTS copy_country # Milanesa
 
 DELIMITER //
 
@@ -286,7 +319,7 @@ BEGIN
 	    SET NEW.ShipCountry = client_country;
 END //
 
-# Ej de tomas achaval de triggers
+# Ej de tomas achaval de triggers # Milanesa
 
 DELIMITER //
 CREATE TRIGGER notify_host_after_booking
@@ -305,7 +338,7 @@ BEGIN
 END //
 DELIMITER ;
 
-### DIF CLAVE: Trigger 1 (notify_host_after_booking)
+### DIF CLAVE: Trigger 1 (notify_host_after_booking) # Milanesa
 
 Acción: Crea un nuevo registro en otra tabla (INSERT INTO messages).
 
@@ -357,7 +390,7 @@ FROM ventas_totales  AS vt
 JOIN Categories AS c ON c.CategoryID = vt.CategoryID 
 ORDER BY c.CategoryName, ventas
 
-# ej 4 vista con empleados con mas ventas por año, mostrando empleado, año y total de ventas. Ordenar el resultdao asc
+# ej 4 vista con empleados con mas ventas por año, mostrando empleado, año y total de ventas. Ordenar el resultdao asc # Milanesa
 CREATE VIEW ventasTotalesView AS
 WITH ventas_totales AS (
 	SELECT 
@@ -391,7 +424,7 @@ WHERE v.total_vendido = (
 )
 ORDER BY v.anio ASC;
 
-# Solucion sin with
+# Solucion sin with # Milanesa vista SIN usar WITH
 
 CREATE VIEW employeeOfTheYear AS 
 
@@ -425,7 +458,7 @@ ORDER BY anio;
 
 DELIMITER //
 
-CREATE TRIGGER update_stock
+CREATE TRIGGER update_stock # Milanesa ejemplo de trigger para restar stock
 AFTER INSERT ON `Order Details`
 FOR EACH ROW
 BEGIN 
@@ -435,6 +468,8 @@ BEGIN
 END //
 
 DELIMITER ;
+
+-- Prueba de si funciona el trigger
 
 SELECT ProductID, ProductName, UnitsInStock 
 FROM Products 
@@ -454,7 +489,7 @@ UPDATE Products
 SET UnitsInStock = UnitsInStock + 5 
 WHERE ProductID = 1;
 
-# Ej triggers parcial recuperatorio 2024 notificar si se recibio una reseña negativa
+# Ej triggers para insertar filas en una tabla, en este caso inserta un mensaje en la tabla de mensajes
 
 DELIMITER //
 
@@ -476,3 +511,7 @@ BEGIN
 END //
 
 DELIMITER ;
+
+# Milanesa NEW.algo ese NEW es la tupla que disparo el trigger, pj hice insert review(tabla_review, mensaje, puntuacion) si yo hago NEW.mensaje eso seria el mensaje 
+# la insercion nueva que disparo el trigger. Se usa WHERE p.id = NEW.property_id; para buscar en la tabla de propiedades el id que coincida con la fila que voy a 
+# insertar
