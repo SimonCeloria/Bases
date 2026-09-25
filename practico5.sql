@@ -1,3 +1,12 @@
+Correr docker
+docker run -d \
+  --name mi-mysql \
+  -e MYSQL_ROOT_PASSWORD=tu_contraseña_segura \
+  -p 3307:3306 \
+  mysql:8.0
+docker start mi-mysql
+docker exec -it mi-mysql mysql -u root -p
+
 USE sakila;
 
 -- Ej 1 Cree una tabla de `directors` con las columnas: Nombre, Apellido, Número de Películas.
