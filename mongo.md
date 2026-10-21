@@ -77,13 +77,25 @@ Los archivos deberían quedar dentro de:
 ```
 
 ## Paso 5. Restaurar la base de datos
-
+### 1 si es un bson
 Ejecutamos `mongorestore` para importar las colecciones:
 
 ```bash
 mongorestore --gzip --db=mflix /tmp/restore/mflix
 ```
+### 2 si es un JSON que empieza con array
 
+```bash
+mongoimport --db=restaurant --collection=restaurants \
+  --file=/tmp/restore/restaurantdb/restaurants.json \
+  --jsonArray
+```
+### 3 si es un JSON que no empieza con array
+
+```bash
+mongoimport --db=restaurant --collection=restaurants \
+  --file=/tmp/restore/restaurantdb/restaurants.json
+```
 **¿Qué significa cada opción?**
 
 - `mongorestore`: restaura una base de datos desde archivos BSON.
